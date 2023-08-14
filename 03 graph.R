@@ -4,9 +4,9 @@ library(tibble)
 library(ggthemes)
 library(ggh4x)
 # Import data from covariables_asc.csv covariables_nac.csv and covariables_dfo.csv
-asc <- tibble(read.csv("output/cv_mean_asc.csv", header = TRUE, sep = ","))
-nac <- tibble(read.csv("output/cv_mean_nac.csv", header = TRUE, sep = ","))
-dfo <- tibble(read.csv("output/cv_mean_dfo.csv", header = TRUE, sep = ","))
+asc <- tibble(read.csv("clean data/cv_mean_asc.csv", header = TRUE, sep = ","))
+nac <- tibble(read.csv("clean data/cv_mean_nac.csv", header = TRUE, sep = ","))
+dfo <- tibble(read.csv("clean data/cv_mean_dfo.csv", header = TRUE, sep = ","))
 
 
 theme_graphpad <- function(){
@@ -81,7 +81,7 @@ asc_graph <- ggplot(data = asc) +
     labs(x = "Time [min]", y = "Concentration [μM]", title = "Vitamin C") +
     theme_graphpad()
 asc_graph
-ggsave("C:/Users/sanma/Desktop/concentraciones_asc.png", asc_graph, width = 8.4, height = 6, dpi = 1000, units = "cm")
+ggsave("C:/Users/sanma/Desktop/concentraciones_asc_new.png", asc_graph, width = 8.4, height = 6, dpi = 1000, units = "cm")
 #same graph but with boxplot instead of mean and standard deviation grouping by cat and time
 
 asc_graph_boxplot <- ggplot() +
@@ -124,7 +124,7 @@ nac_graph <- ggplot() +
     labs(x = "Time [min]", y = "Concentration [μM]", title = "N-Acetylcysteine") +
     theme_graphpad()
 nac_graph
-ggsave("output/concentraciones_nac.png", nac_graph, width = 10, height = 7.5, dpi = 1000, units = "cm")
+ggsave("output/concentraciones_nac_new.png", nac_graph, width = 10, height = 7.5, dpi = 1000, units = "cm")
 
 #box plot
 nac_graph_boxplot <- ggplot() +
@@ -169,7 +169,7 @@ dfo_graph <- ggplot() +
     theme_graphpad()
 dfo_graph
 
-ggsave("C:/Users/sanma/Desktop/concentraciones_dfo.png", dfo_graph, width = 8.4, height = 6, dpi = 1000, units = "cm")
+ggsave("C:/Users/sanma/Desktop/concentraciones_dfo_new.png", dfo_graph, width = 8.4, height = 6, dpi = 1000, units = "cm")
 #box plot
 dfo_graph_boxplot <- ggplot() +
     geom_boxplot(data = dfo, aes(x = time, y = mean_conc, group = interaction(time, cat), col = cat), size = 1) +
@@ -196,7 +196,7 @@ all_plots
 install.packages("extrafont")
 library(extrafont)
 # export pdf
-ggsave("C:/Users/sanma/Desktop/concentraciones_todas.png", all_plots, width = 174, height = 70, units = "mm", dpi = 1000)
+ggsave("C:/Users/sanma/Desktop/concentraciones_todas_new.png", all_plots, width = 174, height = 70, units = "mm", dpi = 1000)
 ggsave("C:/Users/sanma/Desktop/concentraciones_todas.pdf", all_plots, width = 174, height = 70, units = "mm")
 #change letters size
 #all_plots <- all_plots + theme(text = element_text(size=12))

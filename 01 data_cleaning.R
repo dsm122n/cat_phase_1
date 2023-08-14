@@ -1,7 +1,10 @@
 library(tidyr)
 library(dplyr)
 library(ggplot2)
-
+install.packages("ggthemes")
+install.packages("ggh4x")
+library(ggthemes)
+library(ggh4x)
 # oxidative stress
 
 oe <- tibble(read.csv("raw data/oxidative_stress_long.csv", header = TRUE, sep = ","))
@@ -40,50 +43,50 @@ dfo_drug <- dfo %>%
 all_data <- bind_rows(asc_drug, nac_drug, dfo_drug, .id = NULL)
 # graph individual data
 
-# theme_graphpad <- function(){
-#     base_size <- 8
-#     title_size <- 8
-#     line_size <- 1
+theme_graphpad <- function(){
+    base_size <- 8
+    title_size <- 8
+    line_size <- 1
 
-#     theme_foundation(base_size = base_size, base_family = "sans") +
-#     theme(
-#         panel.grid.major = element_blank(),
-#         panel.grid.minor = element_blank(),
-#         panel.border = element_blank(),
-#         panel.background = element_blank(),
-#         plot.background = element_blank() # that will remove border when using ggsave!
-#     ) +
-#     theme(
-#         axis.line = element_line(colour="black", size = line_size),
-#         axis.ticks = element_line(colour="black", size = 1),
-#         axis.ticks.length = unit(4, "pt"),
-#         ggh4x.axis.ticks.length.minor = rel(0.5)
-#     )+
-#     theme(
-#         text = element_text(colour = "black"),
-#         plot.title = element_text(
-#           face = "bold",
-#           size = title_size,
-#           hjust = 0.5
-#         ),
-#         axis.title = element_text(face = "bold", size = title_size),
-#         axis.title.y = element_text(angle = 90, vjust = 2),
-#         axis.title.x = element_text(vjust = -0.2),
-#         axis.text = element_text(face = "bold", size = title_size
-#         ),
-#         axis.text.x = element_text(
-#           angle = 0,
-#           hjust = 0.5,
-#           vjust = 0
-#         )
-#     ) +
-#     theme(legend.key = element_rect(fill = "white", colour = "white"), 
-#             legend.title = element_blank(),
-#             legend.text = element_text(size = title_size, family = "verdana"),
-#         ) +
-#     theme(legend.position = "bottom")+
-#     theme(text = element_text(family = "verdana"))
-# }
+    theme_foundation(base_size = base_size, base_family = "sans") +
+    theme(
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        panel.background = element_blank(),
+        plot.background = element_blank() # that will remove border when using ggsave!
+    ) +
+    theme(
+        axis.line = element_line(colour="black", size = line_size),
+        axis.ticks = element_line(colour="black", size = 1),
+        axis.ticks.length = unit(4, "pt"),
+        ggh4x.axis.ticks.length.minor = rel(0.5)
+    )+
+    theme(
+        text = element_text(colour = "black"),
+        plot.title = element_text(
+          face = "bold",
+          size = title_size,
+          hjust = 0.5
+        ),
+        axis.title = element_text(face = "bold", size = title_size),
+        axis.title.y = element_text(angle = 90, vjust = 2),
+        axis.title.x = element_text(vjust = -0.2),
+        axis.text = element_text(face = "bold", size = title_size
+        ),
+        axis.text.x = element_text(
+          angle = 0,
+          hjust = 0.5,
+          vjust = 0
+        )
+    ) +
+    theme(legend.key = element_rect(fill = "white", colour = "white"), 
+            legend.title = element_blank(),
+            legend.text = element_text(size = title_size, family = "verdana"),
+        ) +
+    theme(legend.position = "bottom")+
+    theme(text = element_text(family = "verdana"))
+}
 
 
 ggplot() +
@@ -132,13 +135,13 @@ ggsave("raw data/drugs_concentration_visualization_clean.pdf", width = 70, heigh
 # add covariates columns
 covariates <- read.csv("raw data/covariates.csv", header = TRUE, sep = ",")
 
-asc_covariates <- asc %>%
+asc_covariates <- asc_clean %>%
     left_join(covariates, by = "id")
 View(asc_covariates)
-nac_covariates <- nac %>%
+nac_covariates <- nac_clean %>%
     left_join(covariates, by = "id")
 View(nac_covariates)
-dfo_covariates <- dfo %>%
+dfo_covariates <- dfo_clean %>%
     left_join(covariates, by = "id")
 View(dfo_covariates)
 write.csv(asc_covariates, "output/covariates_asc.csv", row.names = FALSE)
@@ -156,7 +159,7 @@ View(mean_asc)
 ggplot()+
     geom_line(data = mean_asc, aes(x = time, y = mean_conc, colour = id)) +
     # add geom point with different colors for cat column
-    geom_point(data = mean_asc, aes(x = time, y = mean_conc, shape = cat), alpha = 1, size = 2) +
+    geom_point(data = mean_asc, aes(x = time, y = mean_conc, shape = cat, colour = cat), alpha = 1, size = 2) +
     scale_x_continuous(breaks = seq(0, 180, 60),
                         minor_breaks = seq(0, 180, 15)) +
     theme_bw()+
@@ -184,19 +187,19 @@ ggplot()+
     scale_x_continuous(breaks = seq(0, 180, 60),
                         minor_breaks = seq(0, 180, 15)) +
     theme_bw()
-write.csv(mean_asc, "output/cv_mean_asc.csv", row.names = FALSE)
-write.csv(mean_nac, "output/cv_mean_nac.csv", row.names = FALSE)
-write.csv(mean_dfo, "output/cv_mean_dfo.csv", row.names = FALSE)
+write.csv(mean_asc, "clean data/cv_mean_asc.csv", row.names = FALSE)
+write.csv(mean_nac, "clean data/cv_mean_nac.csv", row.names = FALSE)
+write.csv(mean_dfo, "clean data/cv_mean_dfo.csv", row.names = FALSE)
 
 # corrected asc by baseline concentrations at time 0
 
-asc_corrected <- read.csv("output/cv_mean_asc.csv", header = TRUE, sep = ",")
+asc_corrected <- read.csv("clean data/cv_mean_asc.csv", header = TRUE, sep = ",")
 for(i in unique(asc_corrected$id)){
     asc_corrected[asc_corrected$id == i, "mean_conc"] <- asc_corrected[asc_corrected$id == i, "mean_conc"] - asc_corrected[asc_corrected$id == i & asc_corrected$time == 0, "mean_conc"]
 }
 tibble(asc_corrected)
 View(asc_corrected)
-write.csv(asc_corrected, "output/cv_mean_asc_corrected.csv", row.names = FALSE)
+write.csv(asc_corrected, "clean data/cv_mean_asc_corrected.csv", row.names = FALSE)
 
 # wide for graphpad
 
