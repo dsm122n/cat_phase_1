@@ -92,7 +92,7 @@ theme_graphpad <- function(){
 ggplot() +
     stat_summary(data = all_data, aes(x = time, y = concentration), fun = "mean", geom = "line", size = 1) +
     # stat_summary(data = all_data, aes(x = time, y = concentration), fun = "sd", geom = "errorbar", size = 0.25) +
-    geom_point(data = all_data, aes(x = time, y = concentration, colour = sample), alpha = 0.3, size = 2) +
+    geom_point(data = all_data, aes(x = time, y = concentration, colour = as.character(sample)), alpha = 0.3, size = 2) +
     facet_grid(cols = vars(id), rows = vars(drug), scales = "free") +
     theme_bw()
 ggsave("raw data/drugs_concentration_visualization.pdf", width = 70, height = 20, units = "cm")
@@ -102,24 +102,13 @@ delete_inadequate <- read.csv("raw data/deleting data.csv", header = TRUE, sep =
 delete_inadequate_nac <- delete_inadequate[delete_inadequate$drug == "nac", ]
 delete_inadequate_dfo <- delete_inadequate[delete_inadequate$drug == "dfo", ]
 nac_clean <- tibble(nac_drug)
-# for (i in 1:nrow(delete_inadequate)){
-#     time <- delete_inadequate_nac$time[i]
-#     id <- delete_inadequate_nac$id[i]
-#     sample <- delete_inadequate_nac$sample[i]
-#     # nac_clean <- dplyr::filter(nac_clean, (id != id & sample != sample & time != time))
-#     pos0 <- 1
-#     while (is.na(nac_clean$id[pos0]) == FALSE) {
-#         if(nac_clean$id[pos0] == id && nac_clean$sample[pos0] == sample && nac_clean$time[pos0] == time){
-#             nac_clean <- nac_clean[-pos0, ]
-#         } else {
-#            pos <- pos0 + 1
-#         }
-#     }
-# }
 nac_clean <- anti_join(nac_clean, delete_inadequate_nac, by = c("id", "sample", "time"))
+nac_clean <- filter(nac_clean, concentration >= 0)
+View(nac_clean)
 dfo_clean <- tibble(dfo_drug)
 dfo_clean <- anti_join(dfo_clean, delete_inadequate_dfo, by = c("id", "sample", "time"))
-View(nac_clean)
+dfo_clean <- filter(dfo_clean, concentration >= 0)
+View(dfo_clean)
 all_data_clean <- bind_rows(asc_drug, nac_clean, dfo_clean, .id = NULL) 
 ggplot() +
     stat_summary(data = all_data_clean, aes(x = time, y = concentration), fun = "mean", geom = "line", size = 1) +
@@ -135,7 +124,7 @@ ggsave("raw data/drugs_concentration_visualization_clean.pdf", width = 70, heigh
 # add covariates columns
 covariates <- read.csv("raw data/covariates.csv", header = TRUE, sep = ",")
 
-asc_covariates <- asc_clean %>%
+asc_covariates <- asc_drug %>%
     left_join(covariates, by = "id")
 View(asc_covariates)
 nac_covariates <- nac_clean %>%
@@ -157,13 +146,13 @@ mean_asc <- asc_covariates %>%
 mean_asc <- mean_asc[, c(1, 2, 12, 3:11)]
 View(mean_asc)
 ggplot()+
-    geom_line(data = mean_asc, aes(x = time, y = mean_conc, colour = id)) +
+    geom_line(data = mean_asc, aes(x = time, y = mean_conc, colour = as.character(id))) +
     # add geom point with different colors for cat column
-    geom_point(data = mean_asc, aes(x = time, y = mean_conc, shape = cat, colour = cat), alpha = 1, size = 2) +
-    scale_x_continuous(breaks = seq(0, 180, 60),
+    geom_point(data = mean_asc, aes(x = time, y = mean_conc, shape = cat), alpha = 1, size = 2) +
+    scale_x_continuous(breaks = seq(0, 180, 30),
                         minor_breaks = seq(0, 180, 15)) +
-    theme_bw()+
-    theme_graphpad()
+    theme_bw()
+    # theme_graphpad()
 
 mean_nac <- nac_covariates %>%
     group_by(time, id, cat, sex, age, body_weight, height, bmi, tbq, oh, oh_units_week) %>%
@@ -171,7 +160,7 @@ mean_nac <- nac_covariates %>%
 mean_nac <- mean_nac[, c(1, 2, 12, 3:11)]
 
 ggplot()+
-    geom_line(data = mean_nac, aes(x = time, y = mean_conc, colour = id)) +
+    geom_line(data = mean_nac, aes(x = time, y = mean_conc, colour = as.character(id))) +
     geom_point(data = mean_nac, aes(x = time, y = mean_conc, shape = cat), alpha = 1, size = 2) +
     scale_x_continuous(breaks = seq(0, 180, 60),
                         minor_breaks = seq(0, 180, 15)) +
@@ -181,11 +170,12 @@ mean_dfo <- dfo_covariates %>%
     group_by(time, id, cat, sex, age, body_weight, height, bmi, tbq, oh, oh_units_week) %>%
         summarise(mean_conc = mean(concentration, na.rm = TRUE), .groups = "drop")  
 mean_dfo <- mean_dfo[, c(1, 2, 12, 3:11)]
+View(mean_dfo)
 ggplot()+   
-    geom_line(data = mean_dfo, aes(x = time, y = mean_conc, colour = id)) +
+    geom_line(data = mean_dfo, aes(x = time, y = mean_conc, colour = as.character(id))) +
     geom_point(data = mean_dfo, aes(x = time, y = mean_conc, shape = cat), alpha = 1, size = 2) +
-    scale_x_continuous(breaks = seq(0, 180, 60),
-                        minor_breaks = seq(0, 180, 15)) +
+    scale_x_continuous(breaks = seq(0, 120, 60),
+                        minor_breaks = seq(0, 120, 15)) +
     theme_bw()
 write.csv(mean_asc, "clean data/cv_mean_asc.csv", row.names = FALSE)
 write.csv(mean_nac, "clean data/cv_mean_nac.csv", row.names = FALSE)
@@ -200,6 +190,24 @@ for(i in unique(asc_corrected$id)){
 tibble(asc_corrected)
 View(asc_corrected)
 write.csv(asc_corrected, "clean data/cv_mean_asc_corrected.csv", row.names = FALSE)
+
+# FULL DATABASE
+# joining all data os, asc, nac, dfo
+asc_join <- mean_asc %>%
+    rename(asc = "mean_conc")
+nac_join <- mean_nac[, c(1:3)] %>%
+    rename(nac = "mean_conc")
+dfo_join <- mean_dfo[, c(1:3)] %>%
+    rename(dfo = "mean_conc")
+all_join <- left_join(asc_join, nac_join, by = c("time", "id")) %>%
+    left_join(dfo_join, by = c("time", "id")) %>%
+        left_join(oe, by = c("time", "id"))
+
+all_join <- all_join[, c(1:3, 13, 14, 15, 16, 17, 4:12)]
+View(all_join)
+
+write.csv(all_join, "clean data/all_data_long.csv", row.names = TRUE)
+
 
 # wide for graphpad
 
