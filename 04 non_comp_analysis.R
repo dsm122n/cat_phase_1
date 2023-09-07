@@ -79,7 +79,7 @@ lm(auc ~ cat, nca_asc) %>%
 lm(auc ~ cat, filter(nca_asc, cat == "cat1" | cat == "cat2")) %>%
     summary()
 for (i in unique(data$id)) {
-  # filter by individual
+  # filter by individual 
   data_i <- filter(data, id == i)
   # calculate auc
     nca_asc$auc[nca_asc$id == i] <- AUC((data_i$time)/60, (data_i$asc)/1000, from = 0.5, to = 1.5, na.rm = TRUE) # convert to hours and mmol/L
