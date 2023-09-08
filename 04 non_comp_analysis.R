@@ -6,6 +6,8 @@ install.packages("ggplot2")
 install.packages("minpack.lm")
 install.packages("rsq") 
 install.packages("DescTools")
+install.packages("ggthemes")
+install.packages("ggh4x")
 while(TRUE){
   
   library(dplyr)
@@ -17,14 +19,80 @@ while(TRUE){
   library(minpack.lm)
   library(rsq) 
   library(DescTools)
+  library(ggthemes)
+  library(ggh4x)
   break
 }
+
+
+theme_graphpad <- function(){
+    base_size <- 8
+    title_size <- 8
+    line_size <- 1
+
+    theme_foundation(base_size = base_size, base_family = "sans") +
+    theme(
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        panel.background = element_blank(),
+        plot.background = element_blank() # that will remove border when using ggsave!
+    ) +
+    theme(
+        axis.line = element_line(colour="black", size = line_size),
+        axis.ticks = element_line(colour="black", size = 1),
+        axis.ticks.length = unit(4, "pt"),
+        ggh4x.axis.ticks.length.minor = rel(0.5)
+    )+
+    theme(
+        text = element_text(colour = "black"),
+        plot.title = element_text(
+          face = "bold",
+          size = title_size,
+          hjust = 0.5
+        ),
+        axis.title = element_text(face = "bold", size = title_size),
+        axis.title.y = element_text(angle = 90, vjust = 2),
+        axis.title.x = element_text(vjust = -0.2),
+        axis.text = element_text(face = "bold", size = title_size
+        ),
+        axis.text.x = element_text(
+          angle = 0,
+          hjust = 0.5,
+          vjust = 0
+        )
+    ) +
+    theme(legend.key = element_rect(fill = "white", colour = "white"), 
+            legend.title = element_blank(),
+            legend.text = element_text(size = title_size, family = "verdana"),
+        ) +
+    theme(legend.position = "bottom")+
+    theme(text = element_text(family = "verdana"))
+}
+
+
+sig_bar <- function(x.lo, x.hi, y.lo1, y.lo2, y.hi, label = "*", lab.space = .5,
+                   text.size = 8, line.size = .3, x.lo.lo = NULL,
+                   x.lo.hi = NULL, x.hi.lo = NULL, x.hi.hi = NULL,
+                   small.y.len = 1, colour = "black"){
+  out <- list(
+    geom_segment(aes(x = x.lo, xend = x.lo, y = y.lo1, yend = y.hi), size = .3,
+                 colour = colour),
+    geom_segment(aes(x = x.lo, xend = x.hi, y = y.hi, yend = y.hi), size = .3,
+                 colour = colour),
+    geom_segment(aes(x = x.hi, xend = x.hi, y = y.hi, yend = y.lo2), size = .3,
+                 colour = colour),
+    annotate("text", x = (x.lo + x.hi) / 2, y = y.hi + lab.space,
+             label = label, size = text.size, colour = colour)
+  )
+}
+
 
 # import data covariables
 data <- tibble(read.csv("clean data/all_data_long_2.csv", header = TRUE, sep = ","))
 
 
-# ASC analysis
+# output data
 
 
 nca_asc <- tibble(
@@ -37,7 +105,9 @@ nca_asc <- tibble(
   t12 = c(0),
   dosis = c(0),
     Cl = c(0),
-    V = c(0))
+    V = c(0)) %>%
+        mutate(dummy_cat1 = ifelse(cat == "cat1", 1, 0),
+               dummy_cat2 = ifelse(cat == "cat2", 1, 0))
 nca_nac <- tibble(
   id = c(1:18),
   cat = c("cat1", "p", "cat1", "p", "cat1","cat1", "p", "cat1","cat1","cat2","cat2","p", "p", "cat2","cat2","p","cat2","cat2"),
@@ -48,7 +118,10 @@ nca_nac <- tibble(
   t12 = c(0),
   dosis = c(0),
     Cl = c(0),
-    V = c(0))
+    V = c(0))%>%
+        mutate(dummy_cat1 = ifelse(cat == "cat1", 1, 0),
+               dummy_cat2 = ifelse(cat == "cat2", 1, 0))
+
 nca_dfo <- tibble(
   id = c(1:18),
   cat = c("cat1", "p", "cat1", "p", "cat1","cat1", "p", "cat1","cat1","cat2","cat2","p", "p", "cat2","cat2","p","cat2","cat2"),
@@ -59,9 +132,15 @@ nca_dfo <- tibble(
   t12 = c(0),
   dosis = c(0),
     Cl = c(0),
-    V = c(0))
+    V = c(0))%>%
+        mutate(dummy_cat1 = ifelse(cat == "cat1", 1, 0),
+               dummy_cat2 = ifelse(cat == "cat2", 1, 0))
 
 
+
+
+
+# AUC
 # group by individual (id), then calculate auc by individual
 for (i in unique(data$id)) {
   # filter by individual
@@ -70,23 +149,51 @@ for (i in unique(data$id)) {
     nca_asc$auc[nca_asc$id == i] <- AUC((data_i$time)/60, (data_i$asc)/1000, na.rm = TRUE) # convert to hours and mmol/L
     nca_nac$auc[nca_nac$id == i] <- AUC((data_i$time)/60, (data_i$nac)/1000, na.rm = TRUE) # convert to hours and mmol/L
     nca_dfo$auc[nca_dfo$id == i] <- AUC((data_i$time)/60, (data_i$dfo)/1000, na.rm = TRUE) # convert to hours and mmol/L
+
+  # auc 30 to 90 minutes
+  nca_asc$auc_30_90[nca_asc$id == i] <- AUC((data_i$time)/60, (data_i$asc)/1000, from = 0.5, to = 1.5, na.rm = TRUE) # convert to hours and mmol/L
+  nca_nac$auc_30_90[nca_nac$id == i] <- AUC((data_i$time)/60, (data_i$nac)/1000, from = 0.5, to = 1.5, na.rm = TRUE) # convert to hours and mmol/L
+  nca_dfo$auc_30_90[nca_dfo$id == i] <- AUC((data_i$time)/60, (data_i$dfo)/1000, from = 0.5, to = 1.5, na.rm = TRUE) # convert to hours and mmol/L
+
 }
 
+fit1_nac <- lm(auc_30_90 ~ cat, nca_nac) %>%
+    summary()
+# print significance coefficient
+fit1_nac %>%
+    names()
+fit1_nac$coefficients[3,4]
+lm(auc_30_90 ~ dummy_cat1 * dummy_cat2, nca_nac) %>%
+    summary()
+fit2_nac <- lm(auc_30_90 ~ cat, filter(nca_nac, cat != "p")) %>%
+    summary()
+lm(auc_30_90 ~ cat, filter(nca_asc, cat != "p")) %>%
+    summary()
+lm(auc_30_90 ~ dummy_cat1 * dummy_cat2, nca_asc) %>%
+    summary()
+
+lm(nac ~ cat + time, data = filter(data, time <=90, time>=30, cat != "p")) %>%
+    summary() 
+data %>%
+    select(time, nac, cat) %>%
+    mutate(cols = ifelse(data$cat == "cat1", "red", ifelse(data$cat == "cat2", "blue", "black"))) %>%
+    filter(time <=90, time>=30, cat != "p") %>%
+    plot(col = data$cols)
+
+plot(lm(nac ~ cat + time, data = filter(data, time <=90, time>=30, cat != "p")))
+
+
+# distribution analysis
+density(nca_asc$auc, na.rm = TRUE)
+plot(density(nca_asc$auc, na.rm = TRUE))
+plot(density(nca_dfo$auc, na.rm = TRUE))
+plot(density(nca_nac$auc, na.rm = TRUE))
 lm(auc ~ cat, nca_asc) %>%
     plot()
     summary()
 
 lm(auc ~ cat, filter(nca_asc, cat == "cat1" | cat == "cat2")) %>%
     summary()
-for (i in unique(data$id)) {
-  # filter by individual 
-  data_i <- filter(data, id == i)
-  # calculate auc
-    nca_asc$auc[nca_asc$id == i] <- AUC((data_i$time)/60, (data_i$asc)/1000, from = 0.5, to = 1.5, na.rm = TRUE) # convert to hours and mmol/L
-    nca_nac$auc[nca_nac$id == i] <- AUC((data_i$time)/60, (data_i$nac)/1000, from = 0.5, to = 1.5, na.rm = TRUE) # convert to hours and mmol/L
-    nca_dfo$auc[nca_dfo$id == i] <- AUC((data_i$time)/60, (data_i$dfo)/1000, from = 0.5, to = 1.5, na.rm = TRUE) # convert to hours and mmol/L
-}
-
 lm(auc ~ cat, nca_asc) %>%
     plot()
     summary()
@@ -95,36 +202,49 @@ lm(auc ~ cat, filter(nca_asc, cat == "cat1" | cat == "cat2")) %>%
     summary()
 
 
-# shapiro test for normality
-shapiro.test(asc_nca$auc) 
-# p-value = 0.4062 > 0.05, therefore data is normal
-asc_nca
-View(asc)
-
-
-# calculate elimination constant (k) for each individual using linear regression at times 90-180 min
-asc_nca <- mutate(asc_nca, k = 0)
+# elimination constant (k) for each individual using linear regression at times 90-180 min
 asc_milimolar <- mutate(asc, c_promedio = c_promedio / 1000) # convert to mmol/L
-# log-linear concentration vs time plot
-asc_log_linear <- tibble(time = asc_milimolar$time[(asc_milimolar$cat == "cat1" | asc_milimolar$cat == "cat2") & asc_milimolar$time >=90], 
-                              id = asc_milimolar$id[(asc_milimolar$cat == "cat1" | asc_milimolar$cat == "cat2") & asc_milimolar$time >= 90],
-                              log_c_promedio = log(asc_milimolar$c_promedio[(asc_milimolar$cat == "cat1" | asc_milimolar$cat == "cat2") & asc_milimolar$time >= 90]))
-View(asc_log_linear)
-ggplot() +
-  geom_point(data = asc_log_linear, aes(x = time, y = log_c_promedio, col = asc_log_linear$id))+
-  geom_line(data = asc_log_linear, aes(x = time, y = log_c_promedio, col = asc_log_linear$id))+
-  theme_bw()
-
-for (paciente in unique(asc_log_linear$id)) {
+data <- mutate(data, log_asc = log(asc/1000), log_nac = log(nac/1000), log_dfo = log(dfo/1000)) %>%
+    mutate(time_h = time/60)
+for (i in unique(data$id)) {
   # filter by individual
-  asc_id <- filter(asc_log_linear, id == paciente)
+  data_id <- filter(data, id == i, time >= 90)
   # calculate k
-  asc_nca$k[asc_nca$id == paciente] <- lm(log_c_promedio ~ time, data = asc_id) %>%
-    summary() %>%
-    .$coefficients %>%
-    .[2] * (-1)
+  if(is.na(data_id$asc[1]) == FALSE && data_id$asc[1] != 0){
+    nca_asc$ke[id = i] <- lm(log_asc ~ time_h, data = data_id) %>%
+      summary(na.rm = TRUE) %>%
+      .$coefficients %>%
+      .[2] * (-1)
+  }else{
+    nca_asc$ke[id = i] <- NA
+  }
+  if(is.na(data_id$nac[1]) == FALSE && data_id$nac[1] != 0){
+    nca_nac$ke[id = i] <- lm(log_nac ~ time_h, data = data_id) %>%
+      summary(na.rm = TRUE) %>%
+      .$coefficients %>%
+      .[2] * (-1)
+  }else {
+     nca_nac$ke[id = i] <- NA
+  }
+  if(is.na(data_id$dfo[1]) == FALSE && data_id$dfo[1] != 0){
+    nca_dfo$ke[id = i] <- lm(log_dfo ~ time_h, data = data_id) %>%
+      summary(na.rm = TRUE) %>%
+      .$coefficients %>%
+      .[2] * (-1)
+  }else {
+     nca_dfo$ke[id = i] <- NA
+  }
 }
-View(asc_nca)
+for(i in unique(data$id)){
+  data_id <- filter(data, id == i)
+  nca_asc$c_mean_30_90[id = i] <- mean(data_id$asc[(data_id$time >= 30) & (data_id$time <= 90)])
+  nca_nac$c_mean_30_90[id = i] <- mean(data_id$nac[(data_id$time >= 30) & (data_id$time <= 90)])
+  nca_dfo$c_mean_30_90[id = i] <- mean(data_id$dfo[(data_id$time >= 30) & (data_id$time <= 90)])
+}
+    
+plot(select(nca_asc, cat, auc, auc_30_90, c_mean_30_90, ke), main = "asc")
+plot(select(nca_nac, cat, auc, auc_30_90, c_mean_30_90, ke), main = "nac")
+plot(select(nca_dfo, cat, auc, auc_30_90, c_mean_30_90, ke), main = "dfo")
 # convert k from micromol/L/min to mmol/L/h
 asc_nca <- mutate(asc_nca, k = k * 60)
 # shapiro test for normality
@@ -133,11 +253,11 @@ shapiro.test(asc_nca$k)
 
 # calculate elimination half-life (t1/2) for each individual
 asc_nca <- mutate(asc_nca, t12 = 0)
-for (paciente in unique(asc$id)) {
+for (i in unique(asc$id)) {
   # filter by individual
-  asc_id <- filter(asc, id == paciente)
+  asc_id <- filter(asc, id == i)
   # calculate t1/2
-  asc_nca$t12[asc_nca$id == paciente] <- log(2) / asc_nca$k[asc_nca$id == paciente]
+  asc_nca$t12[asc_nca$id == i] <- log(2) / asc_nca$k[asc_nca$id == i]
 }
 # shapiro test for normality
 shapiro.test(asc_nca$t12)
@@ -165,20 +285,20 @@ for (i in asc_nca$id) {
 
 # calculate Clearance (Cl) for each individual
 asc_nca <- mutate(asc_nca, Cl = 0)
-for (paciente in unique(asc$id)) {
+for (i in unique(asc$id)) {
   # filter by individual
-  asc_id <- filter(asc, id == paciente)
+  asc_id <- filter(asc, id == i)
   # calculate Cl
-  asc_nca$Cl[asc_nca$id == paciente] <- asc_nca$dosis_total[asc_nca$id == paciente] / asc_nca$auc[asc_nca$id == paciente]
+  asc_nca$Cl[asc_nca$id == i] <- asc_nca$dosis_total[asc_nca$id == i] / asc_nca$auc[asc_nca$id == i]
 }
 shapiro.test(asc_nca$Cl)
 # calculate Volume of distribution (V) for each individual
 asc_nca <- mutate(asc_nca, V = 0)
-for (paciente in unique(asc$id)) {
+for (i in unique(asc$id)) {
   # filter by individual
-  asc_id <- filter(asc, id == paciente)
+  asc_id <- filter(asc, id == i)
   # calculate V
-  asc_nca$V[asc_nca$id == paciente] <- asc_nca$Cl[asc_nca$id == paciente] / asc_nca$k[asc_nca$id == paciente]
+  asc_nca$V[asc_nca$id == i] <- asc_nca$Cl[asc_nca$id == i] / asc_nca$k[asc_nca$id == i]
 }
 shapiro.test(asc_nca$V)
 View(summary(asc_nca))
@@ -223,11 +343,11 @@ nac_nca <- tibble(
 nac_nca
 View(nac)
 # group by individual (id), then calculate auc by individual
-for (paciente in unique(nac$id)) {
+for (i in unique(nac$id)) {
   # filter by individual
-  nac_id <- filter(nac, id == paciente)
+  nac_id <- filter(nac, id == i)
   # calculate auc
-  nac_nca$auc[nac_nca$id == paciente] <- AUC((nac_id$time)/60, (nac_id$c_promedio)/1000) # convert to hours and mmol/L
+  nac_nca$auc[nac_nca$id == i] <- AUC((nac_id$time)/60, (nac_id$c_promedio)/1000) # convert to hours and mmol/L
 }
 # shapiro test for normality
 shapiro.test(nac_nca$auc) 
@@ -254,11 +374,11 @@ ggplot() +
   geom_line(data = nac, aes(x = time, y = c_promedio, col = nac$id))+
   theme_bw()
 
-for (paciente in unique(nac_log_linear$id)) {
+for (i in unique(nac_log_linear$id)) {
   # filter by individual
-  nac_id <- filter(nac_log_linear, id == paciente)
+  nac_id <- filter(nac_log_linear, id == i)
   # calculate k
-  nac_nca$k[nac_nca$id == paciente] <- lm(log_c_promedio ~ time, data = nac_id) %>%
+  nac_nca$k[nac_nca$id == i] <- lm(log_c_promedio ~ time, data = nac_id) %>%
     summary() %>%
     .$coefficients %>%
     .[2] * (-1)
@@ -272,11 +392,11 @@ shapiro.test(nac_nca$k)
 
 # calculate elimination half-life (t1/2) for each individual
 nac_nca <- mutate(nac_nca, t12 = 0)
-for (paciente in unique(nac$id)) {
+for (i in unique(nac$id)) {
   # filter by individual
-  nac_id <- filter(nac, id == paciente)
+  nac_id <- filter(nac, id == i)
   # calculate t1/2
-  nac_nca$t12[nac_nca$id == paciente] <- log(2) / nac_nca$k[nac_nca$id == paciente]
+  nac_nca$t12[nac_nca$id == i] <- log(2) / nac_nca$k[nac_nca$id == i]
 }
 # shapiro test for normality
 shapiro.test(nac_nca$t12)
@@ -304,20 +424,20 @@ for (i in nac_nca$id) {
 
 # calculate Clearance (Cl) for each individual
 nac_nca <- mutate(nac_nca, Cl = 0)
-for (paciente in unique(nac$id)) {
+for (i in unique(nac$id)) {
   # filter by individual
-  nac_id <- filter(nac, id == paciente)
+  nac_id <- filter(nac, id == i)
   # calculate Cl
-  nac_nca$Cl[nac_nca$id == paciente] <- nac_nca$dosis_total[nac_nca$id == paciente] / nac_nca$auc[nac_nca$id == paciente]
+  nac_nca$Cl[nac_nca$id == i] <- nac_nca$dosis_total[nac_nca$id == i] / nac_nca$auc[nac_nca$id == i]
 }
 shapiro.test(nac_nca$Cl)
 # calculate Volume of distribution (V) for each individual
 nac_nca <- mutate(nac_nca, V = 0)
-for (paciente in unique(nac$id)) {
+for (i in unique(nac$id)) {
   # filter by individual
-  nac_id <- filter(nac, id == paciente)
+  nac_id <- filter(nac, id == i)
   # calculate V
-  nac_nca$V[nac_nca$id == paciente] <- nac_nca$Cl[nac_nca$id == paciente] / nac_nca$k[nac_nca$id == paciente]
+  nac_nca$V[nac_nca$id == i] <- nac_nca$Cl[nac_nca$id == i] / nac_nca$k[nac_nca$id == i]
 }
 shapiro.test(nac_nca$V)
 View(summary(nac_nca))
@@ -367,11 +487,11 @@ dfo_nca <- tibble(
 dfo_nca
 View(dfo)
 # group by individual (id), then calculate auc by individual
-for (paciente in unique(dfo$id)) {
+for (i in unique(dfo$id)) {
   # filter by individual
-  dfo_id <- filter(dfo, id == paciente)
+  dfo_id <- filter(dfo, id == i)
   # calculate auc
-  dfo_nca$auc[dfo_nca$id == paciente] <- AUC((dfo_id$time)/60, (dfo_id$c_promedio)/1000, na.rm = TRUE) # convert to hours and mmol/L
+  dfo_nca$auc[dfo_nca$id == i] <- AUC((dfo_id$time)/60, (dfo_id$c_promedio)/1000, na.rm = TRUE) # convert to hours and mmol/L
 }
 # shapiro test for normality
 shapiro.test(dfo_nca$auc) 
@@ -395,11 +515,11 @@ ggplot() +
   geom_line(data = dfo, aes(x = time, y = c_promedio, col = dfo$id))+
   theme_bw()
 
-for (paciente in unique(dfo_log_linear$id)) {
+for (i in unique(dfo_log_linear$id)) {
   # filter by individual
-  dfo_id <- filter(dfo_log_linear, id == paciente)
+  dfo_id <- filter(dfo_log_linear, id == i)
   # calculate k
-  dfo_nca$k[dfo_nca$id == paciente] <- lm(log_c_promedio ~ time, data = dfo_id) %>%
+  dfo_nca$k[dfo_nca$id == i] <- lm(log_c_promedio ~ time, data = dfo_id) %>%
     summary() %>%
     .$coefficients %>%
     .[2] * (-1)
@@ -412,11 +532,11 @@ shapiro.test(dfo_nca$k)
 
 # calculate elimination half-life (t1/2) for each individual
 dfo_nca <- mutate(dfo_nca, t12 = 0)
-for (paciente in unique(dfo$id)) {
+for (i in unique(dfo$id)) {
   # filter by individual
-  dfo_id <- filter(dfo, id == paciente)
+  dfo_id <- filter(dfo, id == i)
   # calculate t1/2
-  dfo_nca$t12[dfo_nca$id == paciente] <- log(2) / dfo_nca$k[dfo_nca$id == paciente]
+  dfo_nca$t12[dfo_nca$id == i] <- log(2) / dfo_nca$k[dfo_nca$id == i]
 }
 # shapiro test for normality
 shapiro.test(dfo_nca$t12)
@@ -444,20 +564,20 @@ for (i in dfo_nca$id) {
 
 # calculate Clearance (Cl) for each individual
 dfo_nca <- mutate(dfo_nca, Cl = 0)
-for (paciente in unique(dfo$id)) {
+for (i in unique(dfo$id)) {
   # filter by individual
-  dfo_id <- filter(dfo, id == paciente)
+  dfo_id <- filter(dfo, id == i)
   # calculate Cl
-  dfo_nca$Cl[dfo_nca$id == paciente] <- dfo_nca$dosis_total[dfo_nca$id == paciente] / dfo_nca$auc[dfo_nca$id == paciente]
+  dfo_nca$Cl[dfo_nca$id == i] <- dfo_nca$dosis_total[dfo_nca$id == i] / dfo_nca$auc[dfo_nca$id == i]
 }
 shapiro.test(dfo_nca$Cl)
 # calculate Volume of distribution (V) for each individual
 dfo_nca <- mutate(dfo_nca, V = 0)
-for (paciente in unique(dfo$id)) {
+for (i in unique(dfo$id)) {
   # filter by individual
-  dfo_id <- filter(dfo, id == paciente)
+  dfo_id <- filter(dfo, id == i)
   # calculate V
-  dfo_nca$V[dfo_nca$id == paciente] <- dfo_nca$Cl[dfo_nca$id == paciente] / dfo_nca$k[dfo_nca$id == paciente]
+  dfo_nca$V[dfo_nca$id == i] <- dfo_nca$Cl[dfo_nca$id == i] / dfo_nca$k[dfo_nca$id == i]
 }
 shapiro.test(dfo_nca$V)
 View(summary(dfo_nca))
