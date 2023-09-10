@@ -1,13 +1,14 @@
-install.packages("gridExtra")
-install.packages("forcats")
-install.packages("dplyr")
-install.packages("tibble")
-install.packages("ggplot2")
-install.packages("minpack.lm")
-install.packages("rsq") 
-install.packages("DescTools")
-install.packages("ggthemes")
-install.packages("ggh4x")
+# install.packages("lme4")
+# install.packages("gridExtra")
+# install.packages("forcats")
+# install.packages("dplyr")
+# install.packages("tibble")
+# install.packages("ggplot2")
+# install.packages("minpack.lm")
+# install.packages("rsq") 
+# install.packages("DescTools")
+# install.packages("ggthemes")
+# install.packages("ggh4x")
 while(TRUE){
   
   library(dplyr)
@@ -21,6 +22,7 @@ while(TRUE){
   library(DescTools)
   library(ggthemes)
   library(ggh4x)
+  library(lme4)
   break
 }
 
@@ -90,6 +92,14 @@ sig_bar <- function(x.lo, x.hi, y.lo1, y.lo2, y.hi, label = "*", lab.space = .5,
 
 # import data covariables
 data <- tibble(read.csv("clean data/all_data_long_2.csv", header = TRUE, sep = ","))
+# export data to stata 
+# data_3090 <- filter(data, time>=30, time <=90) 
+# ggplot(data_3090) +
+#   geom_point(aes(x = cat, y = asc, col = "red")) +
+#   geom_point(aes(x = cat, y = nac, col = "green")) +
+#   geom_point(aes(x = cat, y = dfo^4, col = "blue")) +
+#   theme_bw()
+
 
 
 # output data
@@ -157,8 +167,67 @@ for (i in unique(data$id)) {
 
 }
 
-fit1_nac <- lm(auc_30_90 ~ cat, nca_nac) %>%
+
+# plot(density(nca_asc$auc, na.rm = TRUE))
+# boxplot(nca_asc$auc, na.rm = TRUE)
+# 
+# shapiro.test(nca_asc$auc)
+# plot(density(nca_nac$auc, na.rm = TRUE))
+# plot(density(nca_dfo$auc, na.rm = TRUE))
+asc1 <- lm(nca_asc$auc ~ nca_asc$cat) %>%
+    summary(); asc1
+
+#kruskal-wallis test for AUC by CAT
+kruskal.test(nca_asc$auc ~ nca_asc$cat)
+kruskal.test(nca_nac$auc ~ nca_nac$dummy_cat1 + nca_nac$dummy_cat2)
+# mann-whitney test for AUC by CAT
+nca_asc_cat1_2 <- filter(nca_asc, cat == "cat1" | cat == "cat2")
+wilcox.test(nca_asc_cat1_2$auc ~ nca_asc_cat1_2$cat)
+
+
+asc2 <- lm(nca_asc$auc ~ nca_asc$dummy_cat1 + nca_asc$dummy_cat2) %>%
+    summary(); asc2
+
+
+
+plot(density(asc1$residuals))
+hist(asc1$residuals)
+boxplot(asc1$residuals)
+qqnorm(asc1$residuals)
+abline(0,1)
+
+nac1 <- lm(nca_nac$auc ~ nca_nac$cat) %>%
+    summary(); nac1
+nac2 <- lm(nca_nac$auc ~ nca_nac$dummy_cat1 + nca_nac$dummy_cat2) %>%
+    summary(); nac2
+plot(density(nac1$residuals))
+qqnorm(nac1$residuals)
+abline(0,1)
+# kruskal-wallis test for AUC by CAT
+kruskal.test(nca_nac$auc ~ nca_nac$cat)
+kruskal.test(nca_nac$auc ~ nca_nac$dummy_cat1 + nca_nac$dummy_cat2)
+# mann-whitney test for AUC by CAT
+nca_nac_cat1_2 <- filter(nca_nac, cat == "cat1" | cat == "cat2")
+wilcox.test(nca_nac_cat1_2$auc ~ nca_nac_cat1_2$cat)
+
+
+lm(nca_dfo$auc ~ nca_dfo$cat) %>%
     summary()
+lm(nca_dfo$auc ~ nca_dfo$dummy_cat1 + nca_dfo$dummy_cat2) %>%
+    summary()
+
+fit1_nac <- lm(auc_30_90 ~ cat, nca_nac) 
+    summary()
+#density plot residuals
+plot(density(fit1_nac$residuals))
+residuals(fit1_nac) %>%
+    shapiro.test()
+
+#plot residuals vs cat
+plot(predict(fit1_nac), residuals(fit1_nac))
+plot(predict(fit1_nac), fit1_nac$residuals)
+# histogram
+hist(fit1_nac$residuals)
 # print significance coefficient
 fit1_nac %>%
     names()
@@ -181,6 +250,75 @@ data %>%
     plot(col = data$cols)
 
 plot(lm(nac ~ cat + time, data = filter(data, time <=90, time>=30, cat != "p")))
+
+
+
+
+
+data_time_interval <- mutate(data, time_1 = ifelse(time >= 0 & time <= 30, 1, 0),
+                        time_2 = ifelse(time >= 30 & time <= 90, 1, 0),
+                        time_3 = ifelse(time >= 90 & time <= 180, 1, 0)) %>%
+                            mutate(dummy_cat1 = ifelse(cat == "cat1", 1, 0),
+                                   dummy_cat2 = ifelse(cat == "cat2", 1, 0)) %>%
+                                       mutate(time_char = as.character(time)) 
+
+
+##################################################################
+############ Mixed effects model with time interval ##############
+############ Mixed effects model with time interval ##############
+############ Mixed effects model with time interval ##############
+############ Mixed effects model with time interval ##############
+############ Mixed effects model with time interval ##############
+##################################################################
+
+# mixed effects model with time interval as fixed effect and id as random effect
+# id as random effect
+regression_interval <- lmer(asc ~ cat + time_1 + time_2 + time_3 + (1|id), data = data_time_interval) %>%
+    summary(); regression_interval
+regression_interval <- lmer(asc ~ cat + time_1 + time_2 + time_3 + (1|id), data = data_time_interval) 
+visualize(regression_interval, plot = "model", 
+    formula = asc ~ cat + id | time_1 + time_2 )
+regression_interval <- lmer(asc ~ dummy_cat1 + dummy_cat2 + time_char + (1|id), data = data_time_interval) 
+regression_interval <- lmer(asc ~ dummy_cat1 + dummy_cat2 + time + (1|id), data = data_time_interval) 
+visualize(regression_interval, plot = "model", 
+    formula = asc ~ dummy_cat1 + dummy_cat2 + id | time )
+%>%
+    summary(); regression_interval
+estimates(regression_interval)
+visualize(regression_interval, plot = "model")
+
+install.packages("devtools")
+devtools::install_github("dustinfife/flexplot")
+library(flexplot)
+regression_time <- lmer(asc ~ dummy_cat1 + dummy_cat2 + (1 |time_1), data = data_time_interval) 
+visualize(regression_time, plot = "model", 
+  formula = asc ~ dummy_cat1 + dummy_cat2 | time_1)
+%>%
+    summary(); regression_interval
+# plot residuals
+plot(density(residuals(regression_interval)))
+
+
+regression_interval <- lm(nac ~ cat + time_1 + time_2 + time_3, data = data_time_interval) %>%
+    summary(); regression_interval
+
+residuals(regression_interval) %>%
+    shapiro.test()
+plot(density(residuals(regression_interval)))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 # distribution analysis
